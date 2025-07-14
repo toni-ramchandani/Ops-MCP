@@ -14,11 +14,81 @@ from github.Issue import Issue
 from github.PullRequest import PullRequest
 from mcp.server.fastmcp import FastMCP
 
+# Local helpers for secure filesystem operations
+from fs_utils import (
+    resolve_and_validate,
+    read_file_text,
+    list_directory as fs_list_directory,
+)
+
 # Load environment variables
 load_dotenv()
 
 # Create MCP server
 mcp = FastMCP("GitHub MCP Server")
+
+# ---------------------------------------------------------------------------
+# Filesystem MCP – Resources & Tools
+# ---------------------------------------------------------------------------
+
+# Resource: expose file content as readable data via MCP. Supports deep paths.
+
+@mcp.resource("file://{file_path}")
+def get_file(file_path: str) -> str:
+    """Return text content of a file within allowed directories.
+
+    If the file exceeds the inline limit, the output will be truncated with a
+    notice. Binary data is decoded using UTF-8 with replacement of undecodable
+    bytes, ensuring the response is always valid UTF-8 for LLM consumption.
+    """
+    try:
+        return read_file_text(file_path)
+    except Exception as exc:
+        return f"Error reading file: {exc}"
+
+
+# Tool: read_file – wrapper that returns JSON structure
+
+@mcp.tool()
+def read_file(path: str) -> Dict[str, Any]:
+    """Read text content of *path* and return it inside a JSON envelope."""
+    try:
+        content = read_file_text(path)
+        return {"path": path, "content": content}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# Tool: write_file – create or overwrite a file
+
+@mcp.tool()
+def write_file(path: str, content: str, overwrite: bool = True) -> Dict[str, Any]:
+    """Write *content* to *path*.
+
+    If *overwrite* is False and the file exists, the operation will fail.
+    """
+    try:
+        p = resolve_and_validate(path)
+        if p.exists() and not overwrite:
+            return {"error": "File exists and overwrite is False"}
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return {"path": str(p), "bytes_written": len(content)}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# Tool: list_directory – list entries in a directory
+
+@mcp.tool()
+def list_directory(path: str = ".") -> Dict[str, Any]:
+    """Return names and types of entries in *path*."""
+    try:
+        entries = fs_list_directory(path)
+        return {"path": path, "entries": entries}
+    except Exception as exc:
+        return {"error": str(exc)}
+
 
 def get_github_client() -> Github:
     """Get authenticated GitHub client"""
