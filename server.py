@@ -7,6 +7,7 @@ A Model Context Protocol server that provides GitHub API functionality
 import os
 import json
 from typing import Optional, Dict, Any, List
+import requests  # new dependency for Tavily API
 from dotenv import load_dotenv
 from github import Github, GithubException
 from github.Repository import Repository
@@ -435,6 +436,55 @@ def browser_screenshot(page_id: str, full_page: bool = False) -> Dict[str, Any]:
 
 # ---------------------------------------------------------------------------
 # (End of browser tools)
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Web Search – Tavily API
+# ---------------------------------------------------------------------------
+
+def get_tavily_api_key() -> str:
+    """Return Tavily API key from env or raise ValueError."""
+    key = os.getenv("TAVILY_API_KEY")
+    if not key:
+        raise ValueError("TAVILY_API_KEY environment variable is required")
+    return key
+
+
+@mcp.tool()
+def web_search(query: str, max_results: int = 10, include_domains: str | None = None,
+               exclude_domains: str | None = None, search_depth: str = "advanced") -> Dict[str, Any]:
+    """Search the web using Tavily and return JSON results.
+
+    Parameters:
+    - query: Search query string.
+    - max_results: Maximum number of results (1-20).
+    - include_domains / exclude_domains: Comma-separated domain filters.
+    - search_depth: "basic" or "advanced".
+    """
+    try:
+        api_key = get_tavily_api_key()
+        url = "https://api.tavily.com/search"
+        payload: Dict[str, Any] = {
+            "api_key": api_key,
+            "query": query,
+            "max_results": max(1, min(max_results, 20)),
+            "search_depth": search_depth,
+        }
+        if include_domains:
+            payload["include_domains"] = include_domains
+        if exclude_domains:
+            payload["exclude_domains"] = exclude_domains
+
+        resp = requests.post(url, json=payload, timeout=15)
+        if resp.status_code != 200:
+            return {"error": f"Tavily API error {resp.status_code}: {resp.text}"}
+        data = resp.json()
+        return data
+    except Exception as exc:
+        return {"error": str(exc)}
+
+# ---------------------------------------------------------------------------
+# (End of web search tools)
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
