@@ -21,6 +21,17 @@ from fs_utils import (
     list_directory as fs_list_directory,
 )
 
+import os
+import json
+from typing import Optional, Dict, Any, List
+from browser_utils import (
+    new_page,
+    get_page,
+    close_page,
+    page_screenshot_base64,
+)
+from playwright.sync_api import TimeoutError as PWTimeoutError
+
 # Load environment variables
 load_dotenv()
 
@@ -334,6 +345,97 @@ def get_user_info(username: str) -> Dict[str, Any]:
         }
     except GithubException as e:
         return {"error": f"User not found: {e.data.get('message', str(e))}"}
+
+# ---------------------------------------------------------------------------
+# Browser Automation MCP – Tools powered by Playwright
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+def browser_open_page(url: str, wait_until: str = "load", timeout_ms: int = 10000) -> Dict[str, Any]:
+    """Open *url* in a new headless Chromium tab and return the page ID."""
+    try:
+        pid = new_page()
+        page = get_page(pid)
+        page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+        title = page.title()
+        return {"page_id": pid, "url": url, "title": title}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@mcp.tool()
+def browser_close_page(page_id: str) -> Dict[str, Any]:
+    """Close the browser tab referenced by *page_id*."""
+    try:
+        close_page(page_id)
+        return {"status": "closed", "page_id": page_id}
+    except KeyError:
+        return {"error": f"Unknown page_id '{page_id}'"}
+
+
+@mcp.tool()
+def browser_click(page_id: str, selector: str, timeout_ms: int = 10000) -> Dict[str, Any]:
+    """Click the DOM element matched by *selector* on the given page."""
+    try:
+        page = get_page(page_id)
+        page.click(selector, timeout=timeout_ms)
+        return {"clicked": selector, "page_id": page_id}
+    except KeyError:
+        return {"error": f"Unknown page_id '{page_id}'"}
+    except PWTimeoutError:
+        return {"error": f"Timeout waiting for selector '{selector}'"}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@mcp.tool()
+def browser_fill(page_id: str, selector: str, text: str, timeout_ms: int = 10000, clear: bool = True) -> Dict[str, Any]:
+    """Fill or type *text* into the element matched by *selector*."""
+    try:
+        page = get_page(page_id)
+        if clear:
+            page.fill(selector, text, timeout=timeout_ms)
+        else:
+            page.type(selector, text, timeout=timeout_ms)
+        return {"filled": selector, "text": text, "page_id": page_id}
+    except KeyError:
+        return {"error": f"Unknown page_id '{page_id}'"}
+    except PWTimeoutError:
+        return {"error": f"Timeout waiting for selector '{selector}'"}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@mcp.tool()
+def browser_get_text(page_id: str, selector: str, timeout_ms: int = 10000) -> Dict[str, Any]:
+    """Return the innerText of the element matched by *selector*."""
+    try:
+        page = get_page(page_id)
+        page.wait_for_selector(selector, timeout=timeout_ms)
+        text = page.inner_text(selector)
+        return {"text": text, "selector": selector, "page_id": page_id}
+    except KeyError:
+        return {"error": f"Unknown page_id '{page_id}'"}
+    except PWTimeoutError:
+        return {"error": f"Timeout waiting for selector '{selector}'"}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@mcp.tool()
+def browser_screenshot(page_id: str, full_page: bool = False) -> Dict[str, Any]:
+    """Capture a PNG screenshot of the page and return it as a base64 data URL."""
+    try:
+        data_url = page_screenshot_base64(page_id, full_page=full_page)
+        return {"page_id": page_id, "screenshot": data_url}
+    except KeyError:
+        return {"error": f"Unknown page_id '{page_id}'"}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+# ---------------------------------------------------------------------------
+# (End of browser tools)
+# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     # Run the server
