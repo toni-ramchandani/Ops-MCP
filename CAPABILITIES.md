@@ -15,7 +15,7 @@ This server is a **Model-Context Protocol (MCP)** endpoint that lets LLM agents 
 * **Web Browser Automation** – drive a headless Chromium instance for UI automation or scraping.
 * **Web Search** – perform real-time AI-powered searches via Tavily.
 
-All functionality is exposed through standard MCP **resources** (read-only URIs) and **tools** (imperative RPC-style actions). The server is completely stateless except for transient Playwright page objects held in memory during a session.
+All functionality is exposed through standard MCP **resources** (read-only URIs), **tools** (imperative RPC-style actions), and **prompts** (pre-built conversation templates). The server is completely stateless except for transient Playwright page objects held in memory during a session.
 
 
 ## 2 Environment Variables
@@ -92,7 +92,26 @@ browser_close_page(a.page_id)
 Returns Tavily’s JSON payload containing result items with title, snippet, URL, and optional extraction metadata.
 
 
-## 5 Security Model
+## 5 Prompts (Pre-built Conversation Templates)
+
+| Prompt | Description | Main Params |
+|--------|-------------|-------------|
+| `analyze_repository` | Comprehensive GitHub repository analysis template. | `owner`, `repo` |
+| `debug_issue` | GitHub issue debugging and analysis template. | `owner`, `repo`, `issue_number` |
+| `code_review_checklist` | Code review checklist generation for any language. | `language?` |
+| `research_topic` | Technical research template using web search. | `topic`, `focus_area?` |
+| `file_analysis` | Source code file analysis and improvement suggestions. | `file_path` |
+| `web_automation_plan` | Browser automation planning and strategy template. | `task_description`, `target_url?` |
+
+Prompts provide pre-built conversation starters that guide LLMs through complex multi-step workflows. Each prompt includes:
+* **System Message**: Expert persona and detailed instructions
+* **User Message**: Structured request that leverages available MCP tools and resources
+* **Workflow Guidance**: Step-by-step approach to achieve the desired outcome
+
+These templates can be invoked by MCP clients (like Cursor, Claude Desktop) to initiate sophisticated analysis and automation workflows with minimal setup.
+
+
+## 6 Security Model
 
 1. **Filesystem Sandboxing** – every path must pass `_is_subpath` check against each directory in `FS_ALLOWED_DIRS`.
 2. **Browser Isolation** – Playwright runs headless; no remote control outside process.
@@ -100,7 +119,7 @@ Returns Tavily’s JSON payload containing result items with title, snippet, URL
 4. **HTTP Timeouts** – Tavily requests enforce 15 s timeout; Playwright calls default to 10 s.
 
 
-## 6 Dependencies
+## 7 Dependencies
 
 * `mcp[cli] >= 1.11` – Protocol runtime & CLI.  
 * `PyGithub >= 2.6` – GitHub REST wrapper.  
@@ -114,7 +133,7 @@ python -m playwright install   # download Chromium, Firefox, WebKit
 ```
 
 
-## 7 Installation Quick-Start
+## 8 Installation Quick-Start
 
 ```bash
 # clone repo / cd in
@@ -126,7 +145,7 @@ uv run mcp dev server.py
 Use MCP Inspector, Claude Desktop, or any MCP client to interact with resources and tools.
 
 
-## 8 Architecture Diagram (Mermaid)
+## 9 Architecture Diagram (Mermaid)
 ```mermaid
 graph TD
     subgraph Client
@@ -135,6 +154,7 @@ graph TD
     subgraph MCP_Server
         R1[Resources Layer]
         T1[Tools Layer]
+        P1[Prompts Layer]
         Git[GitHub API]
         FS[Filesystem]
         PW[Playwright]
@@ -142,6 +162,7 @@ graph TD
     end
     A -->|MCP request| R1
     A -->|MCP request| T1
+    A -->|MCP request| P1
     T1 --> Git
     T1 --> FS
     T1 --> PW
@@ -149,7 +170,7 @@ graph TD
 ```
 
 
-## 9 FAQ
+## 10 FAQ
 
 **Q: Do I need Node.js for Playwright?**  
 A: No. The Python package bundles its own driver; only the browser binaries are downloaded with `python -m playwright install`.

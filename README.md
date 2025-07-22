@@ -25,7 +25,18 @@ This MCP server replicates the functionality of the [official GitHub MCP server]
 
 #### Browser Automation (Playwright)
 - Headless Chromium automation: open pages, click elements, fill forms, capture screenshots, and extract text.
-- **Web Search (Tavily)**: Real-time search results from the public web using the Tavily API.
+
+#### Web Search (Tavily)
+- Real-time search results from the public web using the Tavily API.
+
+#### MCP Prompts
+- Pre-built conversation templates for common workflows:
+  - **Repository Analysis**: Comprehensive GitHub repository analysis
+  - **Issue Debugging**: Debug and analyze specific GitHub issues  
+  - **Code Review**: Generate code review checklists for any language
+  - **Research Topics**: Technical research using web search
+  - **File Analysis**: Analyze source code files for quality and improvements
+  - **Web Automation**: Create browser automation plans
 
 ## Prerequisites
 
@@ -113,6 +124,24 @@ Run the server directly:
 ```bash
 python server.py
 ```
+
+## Using MCP Prompts
+
+The server includes pre-built prompts for common workflows. In MCP-compatible clients like Cursor or Claude Desktop, you can:
+
+1. **Access prompts** through the prompts interface
+2. **Select a prompt** from the available templates
+3. **Fill in parameters** (like repository owner/name, file paths, etc.)
+4. **Execute the prompt** to get a tailored conversation starter
+
+### Available Prompts
+
+- `analyze_repository`: Analyze a GitHub repository's technical aspects, code quality, and community health
+- `debug_issue`: Debug and analyze a specific GitHub issue with context and suggestions  
+- `code_review_checklist`: Generate comprehensive code review checklists for any programming language
+- `research_topic`: Research technical topics using web search with structured analysis
+- `file_analysis`: Analyze source code files for quality, patterns, and improvements
+- `web_automation_plan`: Create step-by-step browser automation plans for web tasks
 
 ## Filesystem Configuration
 
@@ -265,6 +294,51 @@ Search the public web using Tavily.
 - `include_domains` (string, optional)
 - `exclude_domains` (string, optional)
 - `search_depth` (string, optional): "basic" or "advanced" (default "advanced")
+
+## Prompts
+
+The server provides several pre-built conversation templates:
+
+### analyze_repository
+Comprehensive GitHub repository analysis template.
+
+**Parameters**:
+- `owner` (string): Repository owner
+- `repo` (string): Repository name
+
+### debug_issue
+GitHub issue debugging and analysis template.
+
+**Parameters**:
+- `owner` (string): Repository owner  
+- `repo` (string): Repository name
+- `issue_number` (int): Issue number
+
+### code_review_checklist
+Code review checklist generation template.
+
+**Parameters**:
+- `language` (string): Programming language (default "general")
+
+### research_topic
+Technical research template using web search.
+
+**Parameters**:
+- `topic` (string): Research topic
+- `focus_area` (string): Focus area (default "general")
+
+### file_analysis
+Source code file analysis template.
+
+**Parameters**:
+- `file_path` (string): Path to the file to analyze
+
+### web_automation_plan
+Browser automation planning template.
+
+**Parameters**:
+- `task_description` (string): Description of the automation task
+- `target_url` (string, optional): Target website URL
 
 Returns Tavily response JSON with result items, metadata, etc.
 
