@@ -4,7 +4,7 @@ A Python implementation of the GitHub MCP Server using the Model Context Protoco
 
 ## Features
 
-This MCP server replicates the functionality of the [official GitHub MCP server](https://github.com/github/github-mcp-server) and provides:
+This MCP server provides:
 
 ### Resources (Data Access)
 - **Repository Information**: Get detailed repository data
