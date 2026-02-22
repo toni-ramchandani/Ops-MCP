@@ -18,6 +18,26 @@ This MCP server provides:
 - **List Pull Requests**: List pull requests for a repository
 - **User Information**: Get information about GitHub users
 
+### Additional Capabilities
+
+#### File System Access
+- Securely **read**, **write**, and **list** files/directories inside paths defined by the `FS_ALLOWED_DIRS` environment variable.
+
+#### Browser Automation (Playwright)
+- Headless Chromium automation: open pages, click elements, fill forms, capture screenshots, and extract text.
+
+#### Web Search (Tavily)
+- Real-time search results from the public web using the Tavily API.
+
+#### MCP Prompts
+- Pre-built conversation templates for common workflows:
+  - **Repository Analysis**: Comprehensive GitHub repository analysis
+  - **Issue Debugging**: Debug and analyze specific GitHub issues  
+  - **Code Review**: Generate code review checklists for any language
+  - **Research Topics**: Technical research using web search
+  - **File Analysis**: Analyze source code files for quality and improvements
+  - **Web Automation**: Create browser automation plans
+
 ## Prerequisites
 
 - Python 3.10 or higher
@@ -34,21 +54,28 @@ This MCP server provides:
 2. **Install dependencies**:
    ```bash
    # Using pip
-   pip install "mcp[cli]>=1.11.0" "PyGithub>=2.6.1" "python-dotenv>=1.0.0"
+   pip install "mcp[cli]>=1.11.0" "PyGithub>=2.6.1" "python-dotenv>=1.0.0" "playwright>=1.44.0" "requests>=2.31.0"
    
    # Or using uv (recommended)
-   uv add "mcp[cli]>=1.11.0" "PyGithub>=2.6.1" "python-dotenv>=1.0.0"
+   uv add "mcp[cli]>=1.11.0" "PyGithub>=2.6.1" "python-dotenv>=1.0.0" "playwright>=1.44.0" "requests>=2.31.0"
    ```
+
+3. **Install browser binaries (one-time)**:
+```bash
+python -m playwright install
+```
 
 3. **Set up environment variables**:
    Create a `.env` file in the project root:
    ```bash
    GITHUB_TOKEN=your_github_personal_access_token_here
+   TAVILY_API_KEY=your_tavily_api_key_here
    ```
 
    Or set the environment variable directly:
    ```bash
    export GITHUB_TOKEN=your_github_personal_access_token_here
+   export TAVILY_API_KEY=your_tavily_api_key_here
    ```
 
 ## Getting a GitHub Token
@@ -98,6 +125,34 @@ Run the server directly:
 python server.py
 ```
 
+## Using MCP Prompts
+
+The server includes pre-built prompts for common workflows. In MCP-compatible clients like Cursor or Claude Desktop, you can:
+
+1. **Access prompts** through the prompts interface
+2. **Select a prompt** from the available templates
+3. **Fill in parameters** (like repository owner/name, file paths, etc.)
+4. **Execute the prompt** to get a tailored conversation starter
+
+### Available Prompts
+
+- `analyze_repository`: Analyze a GitHub repository's technical aspects, code quality, and community health
+- `debug_issue`: Debug and analyze a specific GitHub issue with context and suggestions  
+- `code_review_checklist`: Generate comprehensive code review checklists for any programming language
+- `research_topic`: Research technical topics using web search with structured analysis
+- `file_analysis`: Analyze source code files for quality, patterns, and improvements
+- `web_automation_plan`: Create step-by-step browser automation plans for web tasks
+
+## Filesystem Configuration
+
+Set `FS_ALLOWED_DIRS` to a list of absolute directories the server may access (colon-separated on macOS/Linux, semicolon-separated on Windows). Example:
+
+```bash
+export FS_ALLOWED_DIRS="/home/user/projects:/tmp"
+```
+
+If unset, the current working directory is used.
+
 ## Available Resources
 
 ### Repository Information
@@ -109,6 +164,11 @@ python server.py
 - **URI**: `github://repos/{owner}/{repo}/issues`
 - **Description**: Get open issues for a repository
 - **Example**: `github://repos/microsoft/vscode/issues`
+
+### File Content
+- **URI**: `file://{file_path}`
+- **Description**: Return UTF-8 text content of a file within the allowed directories.
+- **Example**: `file:///home/user/projects/README.md`
 
 ## Available Tools
 
@@ -157,6 +217,130 @@ Get information about a GitHub user.
 
 **Parameters**:
 - `username` (string): GitHub username
+
+### read_file
+Read text content of a file.
+
+**Parameters**:
+- `path` (string): Path to the file (must be inside allowed dirs)
+
+### write_file
+Write content to a file.
+
+**Parameters**:
+- `path` (string): Target file path
+- `content` (string): Text to write
+- `overwrite` (bool, optional): Defaults to `true`
+
+### list_directory
+List entries in a directory.
+
+**Parameters**:
+- `path` (string, optional): Directory to list (default `"."`)
+
+### browser_open_page
+Open a URL in a new headless browser tab.
+
+**Parameters**:
+- `url` (string): Page URL
+- `wait_until` (string, optional): `"load"`, `"domcontentloaded"`, or `"networkidle"` (default `"load"`)
+- `timeout_ms` (int, optional): Navigation timeout in ms (default `10000`)
+
+### browser_close_page
+Close an open browser tab.
+
+**Parameters**:
+- `page_id` (string): The identifier returned by `browser_open_page`
+
+### browser_click
+Click a DOM element.
+
+**Parameters**:
+- `page_id` (string)
+- `selector` (string): CSS selector
+- `timeout_ms` (int, optional)
+
+### browser_fill
+Fill or type text into an element.
+
+**Parameters**:
+- `page_id` (string)
+- `selector` (string)
+- `text` (string)
+- `timeout_ms` (int, optional)
+- `clear` (bool, optional): Clear existing content first (default `true`)
+
+### browser_get_text
+Retrieve the innerText of an element.
+
+**Parameters**:
+- `page_id` (string)
+- `selector` (string)
+- `timeout_ms` (int, optional)
+
+### browser_screenshot
+Capture a PNG screenshot as a base64 data URL.
+
+**Parameters**:
+- `page_id` (string)
+- `full_page` (bool, optional): Capture full page (default `false`)
+
+### web_search
+Search the public web using Tavily.
+
+**Parameters**:
+- `query` (string)
+- `max_results` (int, optional, 1-20)
+- `include_domains` (string, optional)
+- `exclude_domains` (string, optional)
+- `search_depth` (string, optional): "basic" or "advanced" (default "advanced")
+
+## Prompts
+
+The server provides several pre-built conversation templates:
+
+### analyze_repository
+Comprehensive GitHub repository analysis template.
+
+**Parameters**:
+- `owner` (string): Repository owner
+- `repo` (string): Repository name
+
+### debug_issue
+GitHub issue debugging and analysis template.
+
+**Parameters**:
+- `owner` (string): Repository owner  
+- `repo` (string): Repository name
+- `issue_number` (int): Issue number
+
+### code_review_checklist
+Code review checklist generation template.
+
+**Parameters**:
+- `language` (string): Programming language (default "general")
+
+### research_topic
+Technical research template using web search.
+
+**Parameters**:
+- `topic` (string): Research topic
+- `focus_area` (string): Focus area (default "general")
+
+### file_analysis
+Source code file analysis template.
+
+**Parameters**:
+- `file_path` (string): Path to the file to analyze
+
+### web_automation_plan
+Browser automation planning template.
+
+**Parameters**:
+- `task_description` (string): Description of the automation task
+- `target_url` (string, optional): Target website URL
+
+Returns Tavily response JSON with result items, metadata, etc.
 
 ## Example Usage
 
