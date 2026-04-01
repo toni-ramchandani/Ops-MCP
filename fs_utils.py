@@ -79,7 +79,7 @@ def read_file_text(path: str, max_bytes: int | None = None) -> str:
     if not p.is_file():
         raise ValueError(f"'{p}' is not a file")
 
-    limit = max_bytes or MAX_INLINE_READ_BYTES
+    limit = MAX_INLINE_READ_BYTES if max_bytes is None else max_bytes
     with p.open("rb") as f:
         data = f.read(limit + 1)
 
